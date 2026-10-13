@@ -1,0 +1,14 @@
+{
+  "name": "gpu-lette",
+  "description": "GPU-lette! — the plugin that shows you what you are really doing while you wait to press the approve button.",
+  "owner": {
+    "name": "Zan-23"
+  },
+  "plugins": [
+    {
+      "name": "gpu-lette",
+      "source": "./",
+      "description": "The plugin that shows you what you are really doing while you wait to press the approve button."
+    }
+  ]
+}

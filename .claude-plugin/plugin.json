@@ -1,0 +1,25 @@
+{
+  "name": "gpu-lette",
+  "version": "1.0.0",
+  "description": "The plugin that shows you what you are really doing while you wait to press the approve button.",
+  "author": {
+    "name": "Zan-23",
+    "url": "https://github.com/Zan-23"
+  },
+  "license": "MIT",
+  "keywords": [
+    "fun",
+    "cost",
+    "spinner",
+    "slot-machine"
+  ],
+  "userConfig": {
+    "claudeQuotes": {
+      "type": "boolean",
+      "title": "Claude-written quotes",
+      "description": "Every third finished answer, Haiku writes five new quotes. A small model call that counts toward your session cost. Never sees your prompts.",
+      "default": true
+    }
+  },
+  "types": "./types/index.d.ts"
+}
