@@ -290,3 +290,56 @@ describe('the damage per spin', () => {
     expect(await shows(/−\$0\.30|JACKPOT/)).toBe(true)
   })
 })
+
+describe('without clicks', () => {
+  const SPINNER = {
+    component: 'Spinner',
+    requestId: 'main',
+    props: { word: 'Blanching', message: null, suffix: '…', mode: 'requesting' },
+  } as const
+  const MAIN_SCREEN = { columns: 120, rows: 40, isFullscreen: false }
+
+  test('the main screen spins again by itself while Claude works, and stops when the answer lands', async ($, on) => {
+    const clock = mock.clock(on)
+    on('session.usage', () => ({ value: { startedAt: 0, context: {}, rateLimits: [], cost: { usd: 0.5 } } }) as never)
+    on('ui.toast', () => ({ value: undefined }))
+    on('prompt.submit', ($, e) => ({ text: e.text }))
+    on('turn.complete', ($, e) => ({ text: e.answer }))
+
+    await $.prompt.submit({ text: 'hello', wait: false, origin: { kind: 'composer' } })
+    const ui = await $.ui.mount({ plugin: 'gpu-lette', surface: 'terminal', ...SPINNER, viewport: MAIN_SCREEN })
+    // Landed, and no button nobody could click.
+    await clock.advance(10_000)
+    expect(await ui.find({ key: 'spin' })).toBeUndefined()
+    expect((await $.command.run({ command: 'spin', args: '' } as never)).text).toBe('Lever pulled.')
+    await clock.advance(10_000)
+
+    // A landed spin turns again on its own after a while.
+    await clock.advance(7_000)
+    expect((await $.command.run({ command: 'spin', args: '' } as never)).text).toBe('The reels are still turning.')
+    await clock.advance(10_000)
+
+    // Once the answer is in, it stays put.
+    await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' } as never)
+    await clock.advance(30_000)
+    expect((await $.command.run({ command: 'spin', args: '' } as never)).text).toBe('Lever pulled.')
+    await ui.unmount()
+  })
+
+  test('the fullscreen layout keeps the button and never spins by itself', async ($, on) => {
+    const clock = mock.clock(on)
+    on('session.usage', () => ({ value: { startedAt: 0, context: {}, rateLimits: [], cost: { usd: 0.5 } } }) as never)
+    on('ui.toast', () => ({ value: undefined }))
+    on('prompt.submit', ($, e) => ({ text: e.text }))
+
+    await $.prompt.submit({ text: 'hello', wait: false, origin: { kind: 'composer' } })
+    const ui = await $.ui.mount({
+      plugin: 'gpu-lette', surface: 'terminal', ...SPINNER, viewport: { ...MAIN_SCREEN, isFullscreen: true },
+    })
+    await clock.advance(10_000)
+    expect(await ui.find({ key: 'spin' })).toBeDefined()
+    await clock.advance(30_000)
+    expect((await $.command.run({ command: 'spin', args: '' } as never)).text).toBe('Lever pulled.')
+    await ui.unmount()
+  })
+})

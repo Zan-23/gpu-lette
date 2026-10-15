@@ -27,6 +27,7 @@ Answer `y` to add the marketplace, then press Enter to install it for your user.
 - **Balance** on the right is what the whole session has cost, as `/cost` reports it.
 - **Jackpot**: three of a kind, 5% of spins. "You are an expert in burning money"
 - **Spin again** with the **SPIN** button or `/spin` once the reels stop.
+- **No clicks?** Terminals report clicks to Claude Code only in its fullscreen layout (`"tui": "fullscreen"` in `settings.json`). Without it, the machine spins again by itself 6 seconds after each spin lands, for as long as Claude is working.
 - `/gpu-lette` opens a bigger casino pane, which turns green with that answer's cost when Claude finishes.
 
 ## Quotes

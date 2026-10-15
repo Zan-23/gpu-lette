@@ -18,6 +18,8 @@ const SLOW_FRAME_MS = 650
 // Reels lock in one by one, at these fractions of the spin.
 const REEL_STOPS = [0.7, 0.85, 1]
 const JACKPOT_ODDS = 0.05
+// Where the terminal reports no clicks, a landed spin stays up this long before the machine spins again on its own.
+const AUTO_SPIN_MS = 6_000
 const GENERATED_KEY = 'generated-taunts'
 
 const initial: Machine = {
@@ -63,6 +65,11 @@ let generated: string[] = []
 let generatedLoad: Promise<void> | null = null
 let turnsSinceGenerated = 0
 let isGenerating = false
+// Whether the person's answer is still being worked on: the machine only spins by itself while it is.
+let isTurnRunning = false
+// The main screen reports no clicks, so the spinner line's button cannot be pressed: the machine spins by itself instead.
+// Known from the spinner line's viewport; until it says, the button stays.
+let isAutoSpin = false
 // The docked pane's body width as last drawn: the spinner line gets the columns beside it.
 let paneColumns = 0
 
@@ -229,6 +236,13 @@ async function stall($: EngineInterface, id: number) {
 
 async function land($: EngineInterface) {
   isSpinning = false
+  const id = spinId
+  if (isAutoSpin && isTurnRunning) {
+    $.clock.after(AUTO_SPIN_MS, () => {
+      // Not after a newer spin, a finished answer, or a pull from /spin that is already turning.
+      if (id === spinId && !isSpinning && isTurnRunning && isAutoSpin) void pull($)
+    })
+  }
   await loadGenerated($)
   const total = await sessionUsd($)
   const m = await update($, machine, x => ({
@@ -245,6 +259,7 @@ async function land($: EngineInterface) {
 
 // The end of a main turn: what the answer cost, the ticket popup, and whether Claude writes quotes now.
 async function settleTurn($: EngineInterface, isDone: boolean, isClaudeQuotesOn: boolean) {
+  isTurnRunning = false
   try {
     const total = await sessionUsd($)
     const m = await update($, machine, x => ({
@@ -299,6 +314,7 @@ export const register: Register = (on, options) => {
       const asked = await sessionUsd($)
       await update($, machine, m => ({ ...m, isTicketDone: false, askedAtUsd: asked }))
     } catch {}
+    isTurnRunning = true
     // Not awaited: the prompt goes through while the reels start.
     void pull($)
 
@@ -346,7 +362,9 @@ export const register: Register = (on, options) => {
     const m = shown(await read($, machine))
     const reels = `[ ${m.reels.map(symbol).join(' ')} ]`
     const balance = ` │ Balance −${usd(m.sessionUsd)}`
-    const hasSpin = m.phase !== 'spinning'
+    isAutoSpin = e.viewport?.isFullscreen === false
+    // A button nobody can click is left off: on the main screen the machine spins by itself.
+    const hasSpin = m.phase !== 'spinning' && !isAutoSpin
     const isLost = isLoss(m)
     // The top row is short and fixed; anything longer goes on the rows beneath it.
     const tag = isLost ? `−${usd(m.lastSpendUsd)}` : m.isJackpot ? 'JACKPOT!' : status(m)
